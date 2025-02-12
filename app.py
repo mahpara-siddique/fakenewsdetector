@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import gdown
 import os
-from transformers import BertModel
+from transformers import BertTokenizer, BertModel
 
 # Google Drive file ID (replace with your actual file ID)
 file_id = "1nXMWHReXZ25LSuEV95ywut6rcYDb2KkY"
@@ -18,6 +18,7 @@ download_model()
 
 # ✅ Load Pre-trained BERT Model
 bert = BertModel.from_pretrained("bert-base-uncased")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
 # ✅ Define the Correct Model Architecture
 class BERT_Arch(nn.Module):
@@ -55,11 +56,16 @@ st.write("Enter a news article to check if it's fake or real.")
 user_input = st.text_area("Enter text here...")
 
 if st.button("Predict"):
-    # Placeholder: You need to tokenize `user_input` using a tokenizer
-    input_tensor = torch.randint(0, 1000, (1, 768))  # Replace with real tokenized input
+    if user_input.strip():
+        # Tokenize and prepare input
+        inputs = tokenizer(user_input, padding=True, truncation=True, max_length=512, return_tensors="pt")
+        input_ids = inputs["input_ids"]
+        attention_mask = inputs["attention_mask"]
 
-    with torch.no_grad():
-        prediction = model(input_tensor, mask=None).argmax(dim=1).item()
+        with torch.no_grad():
+            prediction = model(input_ids, mask=attention_mask).argmax(dim=1).item()
 
-    result = "Fake News" if prediction == 1 else "Real News"
-    st.success(f"Prediction: {result}")
+        result = "FAKE NEWS" if prediction == 1 else "REAL NEWS"
+        st.success(f"Prediction: {result}")
+    else:
+        st.warning("Please enter some text before clicking Predict.")
