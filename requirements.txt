@@ -1,6 +1,7 @@
 streamlit
 torch
-torchvision
 transformers
 gdown
 numpy
+protobuf
+sentencepiece
