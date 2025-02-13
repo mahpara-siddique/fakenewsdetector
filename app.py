@@ -1,9 +1,8 @@
 import streamlit as st
 import torch
-import torch.nn as nn
 import gdown
 import os
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer
 
 # Google Drive file ID (replace with your actual file ID)
 file_id = "1nXMWHReXZ25LSuEV95ywut6rcYDb2KkY"
@@ -16,56 +15,34 @@ def download_model():
 
 download_model()
 
-# ✅ Load Pre-trained BERT Model
-bert = BertModel.from_pretrained("bert-base-uncased")
+# ✅ Load Pre-trained Tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-# ✅ Define the Correct Model Architecture
-class BERT_Arch(nn.Module):
-    def __init__(self, bert):
-        super(BERT_Arch, self).__init__()
-        self.bert = bert
-        self.dropout = nn.Dropout(0.1)  
-        self.relu = nn.ReLU()  
-        self.fc1 = nn.Linear(768, 512)  
-        self.fc2 = nn.Linear(512, 2)  
-        self.softmax = nn.LogSoftmax(dim=1)  
-
-    def forward(self, sent_id, mask):
-        cls_hs = self.bert(sent_id, attention_mask=mask)['pooler_output']
-        x = self.fc1(cls_hs)  
-        x = self.relu(x)  
-        x = self.dropout(x)  
-        x = self.fc2(x)  
-        x = self.softmax(x)  
-        return x
-
-# ✅ Load the Model
-model = BERT_Arch(bert)
+# ✅ Load the Full Model (No need to redefine architecture)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 try:
-    model.load_state_dict(torch.load(output_model, map_location=torch.device('cpu')))
+    model = torch.load(output_model, map_location=device)
     model.eval()
+    model.to(device)
 except RuntimeError as e:
     st.error(f"Model loading error: {str(e)}")
     st.stop()
 
 # ✅ Streamlit UI
-st.title("Fake News Detection App")
-st.write("Enter a news article to check if it's fake or real.")
+st.title("📰 Fake News Detection App")
+st.write("Enter a news article to check if it's FAKE or REAL.")
 
-user_input = st.text_area("Enter text here...")
+user_input = st.text_area("✍️ Enter text here...")
 
-if st.button("Predict"):
+if st.button("🔍 Predict"):
     if user_input.strip():
         # Tokenize and prepare input
-        inputs = tokenizer(user_input, padding=True, truncation=True, max_length=512, return_tensors="pt")
-        input_ids = inputs["input_ids"]
-        attention_mask = inputs["attention_mask"]
+        inputs = tokenizer(user_input, padding=True, truncation=True, max_length=512, return_tensors="pt").to(device)
 
         with torch.no_grad():
-            prediction = model(input_ids, mask=attention_mask).argmax(dim=1).item()
+            prediction = model(inputs["input_ids"], inputs["attention_mask"]).argmax(dim=1).item()
 
-        result = "FAKE NEWS" if prediction == 1 else "REAL NEWS"
-        st.success(f"Prediction: {result}")
+        result = "FAKE NEWS" if prediction == 0 else "REAL NEWS"
+        st.success(f"📢 Prediction: **{result}**")
     else:
-        st.warning("Please enter some text before clicking Predict.")
+        st.warning("⚠️ Please enter some text before clicking Predict.")
